@@ -39,8 +39,13 @@ tmp/
 temp/
 *.tmp
 
+# Go build artifacts
+backend/backend
+*.exe
+
 # Coverage and test artifacts
 coverage/
+*.out
 .nyc_output/
 htmlcov/
 
