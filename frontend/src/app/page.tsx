@@ -2,17 +2,13 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { useISSPosition } from "@/hooks/useISSPosition";
-import { useOrbitTrack } from "@/hooks/useOrbitTrack";
+import { useISSPosition, useOrbitTrack, PositionPanel, CountryInfo } from "@/features/tracking";
+import { usePassPredictions, PassList } from "@/features/passes";
+import { StationSidebar } from "@/features/station";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { usePassPredictions } from "@/hooks/usePassPredictions";
-import PositionPanel from "@/components/info/PositionPanel";
-import CountryInfo from "@/components/info/CountryInfo";
-import PassList from "@/components/info/PassList";
-import LocationInput from "@/components/info/LocationInput";
-import StationSidebar from "@/components/station/StationSidebar";
+import LocationInput from "@/components/LocationInput";
 
-const GlobeView = dynamic(() => import("@/components/globe/GlobeView"), {
+const GlobeView = dynamic(() => import("@/features/tracking/components/GlobeView"), {
   ssr: false,
   loading: () => (
     <div className="flex h-screen w-screen items-center justify-center bg-[#0a0a0a]">

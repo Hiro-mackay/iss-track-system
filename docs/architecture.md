@@ -12,9 +12,81 @@ iss-tracker is a real-time ISS tracking system. The backend fetches TLE (Two-Lin
 - **Frontend** -- Next.js (App Router) SPA with Cesium.js 3D globe, receives real-time position updates via WebSocket
 - **Backend API** -- Go net/http server with gorilla/websocket providing REST endpoints and WebSocket connections for ISS position streaming
 - **Orbit Propagator** -- akhenakh/sgp4 module that computes ISS latitude/longitude/altitude from TLE data
-- **TLE Cache** -- In-memory cache (2-hour TTL) that fetches and stores TLE data from CelesTrak
-- **Crew Cache** -- In-memory cache (1-hour TTL) that fetches ISS crew data from Open Notify API
+- **TLE Repository** -- In-memory repository (2-hour TTL) that fetches and stores TLE data from CelesTrak
+- **Crew Repository** -- In-memory repository (1-hour TTL) that fetches ISS crew data from Open Notify API
 - **Station Info Panel** -- Left sidebar displaying ISS crew, station status, and orbital parameters
+
+## Backend Structure
+
+```
+backend/
+  cmd/server/main.go                        # Entrypoint, DI wiring
+  internal/
+    config/config.go                         # LoadConfig from env vars
+    domain/
+      model/                                 # Domain types + repository interfaces
+        position.go                          # ISSPosition, OrbitPoint
+        pass.go                              # PassEvent, PassPrediction, Brightness
+        crew.go                              # CrewMember
+        station.go                           # OrbitalParams, ISSStatus
+        repository.go                        # TLEProvider, CrewProvider interfaces
+      orbit/                                 # Pure domain logic (no I/O)
+        propagator.go                        # PropagatePosition, PropagateOrbitTrack
+        pass.go                              # PredictPasses, Brightness
+        solar.go                             # SunAltitude, IsPassVisible
+        status.go                            # ComputeStatus
+    repository/                              # Infrastructure (implements domain interfaces)
+      tle.go                                 # TLERepository (TLEProvider)
+      crew.go                                # CrewRepository (CrewProvider)
+    service/query/                           # CQRS query services (orchestrate repo + domain)
+      position.go                            # PositionQueryService
+      pass.go                                # PassQueryService
+      crew.go                                # CrewQueryService
+      station.go                             # StationQueryService
+    presentation/                            # HTTP layer
+      response.go                            # WriteError
+      middleware/cors.go                     # CORSMiddleware
+      handler/                               # Thin HTTP handlers
+        position.go, orbit.go, passes.go
+        crew.go, status.go, ws.go
+```
+
+**Layering rules:**
+- Domain layer has no infrastructure dependencies (Dependency Inversion via interfaces)
+- Repository implements domain interfaces
+- Query services orchestrate repository + domain logic
+- Handlers are thin: HTTP concerns only, delegate to query services
+
+## Frontend Structure
+
+```
+frontend/src/
+  app/
+    layout.tsx, page.tsx, globals.css
+  features/
+    tracking/                                # ISS position + orbit visualization
+      components/                            # GlobeView, ISSEntity, OrbitPath3D,
+                                             # CameraControls, cesium-setup,
+                                             # PositionPanel, CountryInfo
+      hooks/                                 # useISSPosition, useOrbitTrack, useReverseGeocode
+      api.ts, types.ts, index.ts
+    passes/                                  # Pass prediction feature
+      components/PassList.tsx
+      hooks/usePassPredictions.ts
+      api.ts, types.ts, index.ts
+    station/                                 # Station info sidebar
+      components/                            # StationSidebar, CrewSection,
+                                             # StatusSection, OrbitalSection
+      hooks/                                 # useCrewData, useStationStatus
+      api.ts, types.ts, index.ts
+  components/LocationInput.tsx               # Generic reusable
+  hooks/useGeolocation.ts                    # Generic reusable
+  lib/
+    api-client.ts                            # API_BASE constant
+    fallback-crew.ts                         # Offline fallback
+```
+
+**Feature organization:** Each feature colocates its components, hooks, API layer, and types with barrel exports via `index.ts`.
 
 ## Data Flow
 
@@ -29,10 +101,10 @@ iss-tracker is a real-time ISS tracking system. The backend fetches TLE (Two-Lin
 
 | Context | Responsibility | Key Components |
 |---------|---------------|----------------|
-| Orbit Tracking | TLE fetch, SGP4 propagation, real-time streaming | TLECache, orbit.go, handler_position, handler_ws |
-| Visualization | 3D globe rendering, orbit path display | GlobeView, ISSEntity, OrbitPath3D |
-| Pass Prediction | Satellite pass calculations, visibility | passes.go, solar.go, handler_passes |
-| Station Info | ISS crew, orbital parameters, station status | CrewCache, station.go, handler_crew, handler_status |
+| Orbit Tracking | TLE fetch, SGP4 propagation, real-time streaming | TLERepository, orbit/propagator, handler/position, handler/ws |
+| Visualization | 3D globe rendering, orbit path display | tracking/GlobeView, ISSEntity, OrbitPath3D |
+| Pass Prediction | Satellite pass calculations, visibility | orbit/pass, orbit/solar, handler/passes |
+| Station Info | ISS crew, orbital parameters, station status | CrewRepository, orbit/status, handler/crew, handler/status |
 
 ## API Endpoints
 
@@ -53,9 +125,9 @@ iss-tracker is a real-time ISS tracking system. The backend fetches TLE (Two-Lin
 | Language      | Go 1.22, TypeScript | Backend + Frontend |
 | Framework     | net/http + gorilla/websocket, Next.js (App Router) | REST + WebSocket, React SSR |
 | Database      | None (in-memory cache) | TLE + crew data cached in memory |
-| Infrastructure| TBD | Local development initially |
-| CI/CD         | GitHub Actions | TBD |
+| Infrastructure| Docker Compose | Local + CI |
+| CI/CD         | GitHub Actions | Lint, typecheck, test, build |
 
 ## Infrastructure
 
-Local development setup initially. Backend and frontend run as separate processes in a monorepo structure (`/backend` and `/frontend`).
+Monorepo with `/backend` and `/frontend`. Development via `task dev` (parallel). Full CI via `task check` (lint + typecheck + test + build). Docker Compose for containerized deployment.

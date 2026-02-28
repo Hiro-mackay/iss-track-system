@@ -13,7 +13,7 @@ tasks:
   dev:backend:
     desc: Run backend dev server
     dir: "{{.BACKEND_DIR}}"
-    cmd: go run .
+    cmd: go run ./cmd/server
 
   dev:frontend:
     desc: Run frontend dev server
@@ -28,7 +28,7 @@ tasks:
   build:backend:
     desc: Build Go binary
     dir: "{{.BACKEND_DIR}}"
-    cmd: go build ./...
+    cmd: go build -o backend ./cmd/server
 
   build:frontend:
     desc: Build Next.js
