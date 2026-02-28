@@ -1,0 +1,111 @@
+version: "3"
+
+vars:
+  BACKEND_DIR: ./backend
+  FRONTEND_DIR: ./frontend
+
+tasks:
+  # --- Development ---
+  dev:
+    desc: Start backend and frontend in parallel
+    deps: [dev:backend, dev:frontend]
+
+  dev:backend:
+    desc: Run backend dev server
+    dir: "{{.BACKEND_DIR}}"
+    cmd: go run .
+
+  dev:frontend:
+    desc: Run frontend dev server
+    dir: "{{.FRONTEND_DIR}}"
+    cmd: npm run dev
+
+  # --- Build ---
+  build:
+    desc: Build backend and frontend
+    deps: [build:backend, build:frontend]
+
+  build:backend:
+    desc: Build Go binary
+    dir: "{{.BACKEND_DIR}}"
+    cmd: go build ./...
+
+  build:frontend:
+    desc: Build Next.js
+    dir: "{{.FRONTEND_DIR}}"
+    cmd: npm run build
+
+  # --- Test ---
+  test:
+    desc: Run all tests
+    deps: [test:backend, test:frontend]
+
+  test:backend:
+    desc: Run Go tests
+    dir: "{{.BACKEND_DIR}}"
+    cmd: go test ./...
+
+  test:frontend:
+    desc: Run frontend tests
+    dir: "{{.FRONTEND_DIR}}"
+    cmd: npx vitest run --passWithNoTests
+
+  # --- Lint ---
+  lint:
+    desc: Lint backend and frontend
+    deps: [lint:backend, lint:frontend]
+
+  lint:backend:
+    desc: Run golangci-lint
+    dir: "{{.BACKEND_DIR}}"
+    cmd: golangci-lint run ./...
+
+  lint:frontend:
+    desc: Run ESLint
+    dir: "{{.FRONTEND_DIR}}"
+    cmd: npx eslint .
+
+  # --- Type Check ---
+  typecheck:
+    desc: TypeScript type check
+    dir: "{{.FRONTEND_DIR}}"
+    cmd: npx tsc --noEmit
+
+  # --- Docker ---
+  up:
+    desc: Start all services with Docker Compose
+    cmd: docker compose up --build
+
+  up:detach:
+    desc: Start all services in background
+    cmd: docker compose up --build -d
+
+  down:
+    desc: Stop Docker Compose services
+    cmd: docker compose down
+
+  # --- CI / Verify ---
+  check:
+    desc: Run lint + typecheck + test + build
+    cmds:
+      - task: lint
+      - task: typecheck
+      - task: test
+      - task: build
+
+  # --- Setup ---
+  setup:
+    desc: Install all dependencies
+    cmds:
+      - task: setup:backend
+      - task: setup:frontend
+
+  setup:backend:
+    desc: Download Go modules
+    dir: "{{.BACKEND_DIR}}"
+    cmd: go mod download
+
+  setup:frontend:
+    desc: Install npm packages
+    dir: "{{.FRONTEND_DIR}}"
+    cmd: npm install
