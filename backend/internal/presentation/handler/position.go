@@ -7,15 +7,16 @@ import (
 	"net/http"
 
 	"github.com/Hiro-mackay/iss-track-system/backend/internal/presentation"
-	"github.com/Hiro-mackay/iss-track-system/backend/internal/service/query"
+	"github.com/Hiro-mackay/iss-track-system/backend/internal/service"
+	trackingsvc "github.com/Hiro-mackay/iss-track-system/backend/internal/service/tracking"
 )
 
 // Position returns an http.HandlerFunc that serves the current ISS position as JSON.
-func Position(svc *query.PositionQueryService) http.HandlerFunc {
+func Position(svc *trackingsvc.QueryService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		pos, err := svc.CurrentPosition()
 		if err != nil {
-			var tleErr *query.TLEError
+			var tleErr *service.TLEError
 			if errors.As(err, &tleErr) {
 				slog.Error("failed to get TLE", "error", err)
 				presentation.WriteError(w, "TLE_UNAVAILABLE", "TLE unavailable", http.StatusServiceUnavailable)

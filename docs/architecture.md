@@ -24,25 +24,25 @@ backend/
   internal/
     config/config.go                         # LoadConfig from env vars
     domain/
-      model/                                 # Domain types + repository interfaces
+      tracking/                              # Orbit Tracking bounded context
         position.go                          # ISSPosition, OrbitPoint
-        pass.go                              # PassEvent, PassPrediction, Brightness
-        crew.go                              # CrewMember
-        station.go                           # OrbitalParams, ISSStatus
-        repository.go                        # TLEProvider, CrewProvider interfaces
-      orbit/                                 # Pure domain logic (no I/O)
+        provider.go                          # TLEProvider interface
         propagator.go                        # PropagatePosition, PropagateOrbitTrack
+      pass/                                  # Pass Prediction bounded context
+        prediction.go                        # PassEvent, PassPrediction, Brightness consts
         pass.go                              # PredictPasses, Brightness
-        solar.go                             # SunAltitude, IsPassVisible
-        status.go                            # ComputeStatus
+        solar.go                             # SunAltitude, IsPassVisible, julianDay
+      station/                               # Station Info bounded context
+        crew.go                              # CrewMember, CrewProvider interface
+        status.go                            # OrbitalParams, ISSStatus, ComputeStatus
     repository/                              # Infrastructure (implements domain interfaces)
-      tle.go                                 # TLERepository (TLEProvider)
-      crew.go                                # CrewRepository (CrewProvider)
-    service/query/                           # CQRS query services (orchestrate repo + domain)
-      position.go                            # PositionQueryService
-      pass.go                                # PassQueryService
-      crew.go                                # CrewQueryService
-      station.go                             # StationQueryService
+      tle.go                                 # TLERepository (tracking.TLEProvider)
+      crew.go                                # CrewRepository (station.CrewProvider)
+    service/                                 # Query services (domain-first naming)
+      error.go                               # TLEError (shared across services)
+      tracking/query.go                      # QueryService (position + orbit)
+      pass/query.go                          # QueryService (pass predictions)
+      station/query.go                       # QueryService (crew + status)
     presentation/                            # HTTP layer
       response.go                            # WriteError
       middleware/cors.go                     # CORSMiddleware
@@ -52,9 +52,10 @@ backend/
 ```
 
 **Layering rules:**
+- Domain layer colocates types and behavior per bounded context (no separate model/logic split)
 - Domain layer has no infrastructure dependencies (Dependency Inversion via interfaces)
 - Repository implements domain interfaces
-- Query services orchestrate repository + domain logic
+- Query services orchestrate repository + domain logic (service/{domain}/query.go)
 - Handlers are thin: HTTP concerns only, delegate to query services
 
 ## Frontend Structure
@@ -62,19 +63,22 @@ backend/
 ```
 frontend/src/
   app/
-    layout.tsx, page.tsx, globals.css
+    layout.tsx                               # Root layout (Server Component)
+    page.tsx                                 # Home page (Server Component)
+    _components/ISSTrackerClient.tsx          # Client Component: layout state only
   features/
     tracking/                                # ISS position + orbit visualization
-      components/                            # GlobeView, ISSEntity, OrbitPath3D,
+      components/                            # TrackingView (encapsulates hooks),
+                                             # GlobeView, ISSEntity, OrbitPath3D,
                                              # CameraControls, cesium-setup,
                                              # PositionPanel, CountryInfo
       hooks/                                 # useISSPosition, useOrbitTrack, useReverseGeocode
       api.ts, types.ts, index.ts
     passes/                                  # Pass prediction feature
-      components/PassList.tsx
+      components/                            # PassesPanel (encapsulates hooks), PassList
       hooks/usePassPredictions.ts
       api.ts, types.ts, index.ts
-    station/                                 # Station info sidebar
+    station/                                 # Station info sidebar (self-contained)
       components/                            # StationSidebar, CrewSection,
                                              # StatusSection, OrbitalSection
       hooks/                                 # useCrewData, useStationStatus
@@ -86,7 +90,7 @@ frontend/src/
     fallback-crew.ts                         # Offline fallback
 ```
 
-**Feature organization:** Each feature colocates its components, hooks, API layer, and types with barrel exports via `index.ts`.
+**Feature organization:** Each feature colocates its components, hooks, API layer, and types with barrel exports via `index.ts`. Data hooks are encapsulated within feature components (TrackingView, PassesPanel), not called at the page level. `page.tsx` is a Server Component that delegates to `ISSTrackerClient` for client-side composition.
 
 ## Data Flow
 
@@ -101,10 +105,10 @@ frontend/src/
 
 | Context | Responsibility | Key Components |
 |---------|---------------|----------------|
-| Orbit Tracking | TLE fetch, SGP4 propagation, real-time streaming | TLERepository, orbit/propagator, handler/position, handler/ws |
-| Visualization | 3D globe rendering, orbit path display | tracking/GlobeView, ISSEntity, OrbitPath3D |
-| Pass Prediction | Satellite pass calculations, visibility | orbit/pass, orbit/solar, handler/passes |
-| Station Info | ISS crew, orbital parameters, station status | CrewRepository, orbit/status, handler/crew, handler/status |
+| Orbit Tracking | TLE fetch, SGP4 propagation, real-time streaming | domain/tracking, TLERepository, service/tracking, handler/position, handler/ws |
+| Visualization | 3D globe rendering, orbit path display | tracking/TrackingView, GlobeView, ISSEntity, OrbitPath3D |
+| Pass Prediction | Satellite pass calculations, visibility | domain/pass, service/pass, handler/passes, PassesPanel |
+| Station Info | ISS crew, orbital parameters, station status | domain/station, CrewRepository, service/station, handler/crew, handler/status |
 
 ## API Endpoints
 

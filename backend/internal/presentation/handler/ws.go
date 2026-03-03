@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Hiro-mackay/iss-track-system/backend/internal/service/query"
+	trackingsvc "github.com/Hiro-mackay/iss-track-system/backend/internal/service/tracking"
 	"github.com/gorilla/websocket"
 )
 
@@ -16,7 +16,7 @@ const (
 )
 
 // WebSocket returns an http.HandlerFunc that streams ISS position via WebSocket.
-func WebSocket(svc *query.PositionQueryService, interval time.Duration, allowedOrigins []string) http.HandlerFunc {
+func WebSocket(svc *trackingsvc.QueryService, interval time.Duration, allowedOrigins []string) http.HandlerFunc {
 	allowed := make(map[string]struct{}, len(allowedOrigins))
 	for _, o := range allowedOrigins {
 		allowed[o] = struct{}{}

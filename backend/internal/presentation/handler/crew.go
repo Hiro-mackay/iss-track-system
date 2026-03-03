@@ -6,11 +6,11 @@ import (
 	"net/http"
 
 	"github.com/Hiro-mackay/iss-track-system/backend/internal/presentation"
-	"github.com/Hiro-mackay/iss-track-system/backend/internal/service/query"
+	stationsvc "github.com/Hiro-mackay/iss-track-system/backend/internal/service/station"
 )
 
 // Crew returns an http.HandlerFunc that serves the current ISS crew as JSON.
-func Crew(svc *query.CrewQueryService) http.HandlerFunc {
+func Crew(svc *stationsvc.QueryService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		members, err := svc.List()
 		if err != nil {

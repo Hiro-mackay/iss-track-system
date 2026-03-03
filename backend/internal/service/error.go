@@ -1,4 +1,4 @@
-package query
+package service
 
 // TLEError wraps a TLE provider error so handlers can distinguish
 // TLE unavailability (503) from computation errors (500).

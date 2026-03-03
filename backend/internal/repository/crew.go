@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/Hiro-mackay/iss-track-system/backend/internal/config"
-	"github.com/Hiro-mackay/iss-track-system/backend/internal/domain/model"
+	"github.com/Hiro-mackay/iss-track-system/backend/internal/domain/station"
 )
 
-var _ model.CrewProvider = (*CrewRepository)(nil)
+var _ station.CrewProvider = (*CrewRepository)(nil)
 
 // crewMaxResponseBytes limits the size of crew responses to 64 KiB.
 const crewMaxResponseBytes = 1 << 16
@@ -33,7 +33,7 @@ type openNotifyResponse struct {
 type CrewRepository struct {
 	mu        sync.RWMutex
 	refreshMu sync.Mutex
-	members   []model.CrewMember
+	members   []station.CrewMember
 	fetchedAt time.Time
 	cfg       config.Config
 	client    *http.Client
@@ -48,10 +48,10 @@ func NewCrewRepository(cfg config.Config) *CrewRepository {
 }
 
 // Get returns cached crew members, refreshing if the cache has expired.
-func (r *CrewRepository) Get() ([]model.CrewMember, error) {
+func (r *CrewRepository) Get() ([]station.CrewMember, error) {
 	r.mu.RLock()
 	if r.members != nil && time.Since(r.fetchedAt) < r.cfg.CrewCacheTTL {
-		result := make([]model.CrewMember, len(r.members))
+		result := make([]station.CrewMember, len(r.members))
 		copy(result, r.members)
 		r.mu.RUnlock()
 		return result, nil
@@ -64,7 +64,7 @@ func (r *CrewRepository) Get() ([]model.CrewMember, error) {
 	// Double-check: another goroutine may have refreshed while we waited.
 	r.mu.RLock()
 	if r.members != nil && time.Since(r.fetchedAt) < r.cfg.CrewCacheTTL {
-		result := make([]model.CrewMember, len(r.members))
+		result := make([]station.CrewMember, len(r.members))
 		copy(result, r.members)
 		r.mu.RUnlock()
 		return result, nil
@@ -74,7 +74,7 @@ func (r *CrewRepository) Get() ([]model.CrewMember, error) {
 	if err := r.Refresh(); err != nil {
 		r.mu.RLock()
 		if r.members != nil {
-			result := make([]model.CrewMember, len(r.members))
+			result := make([]station.CrewMember, len(r.members))
 			copy(result, r.members)
 			r.mu.RUnlock()
 			slog.Warn("crew refresh failed, returning stale cache", "error", err)
@@ -86,7 +86,7 @@ func (r *CrewRepository) Get() ([]model.CrewMember, error) {
 
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	result := make([]model.CrewMember, len(r.members))
+	result := make([]station.CrewMember, len(r.members))
 	copy(result, r.members)
 	return result, nil
 }
@@ -113,10 +113,10 @@ func (r *CrewRepository) Refresh() error {
 		return fmt.Errorf("parsing crew JSON: %w", err)
 	}
 
-	var members []model.CrewMember
+	var members []station.CrewMember
 	for _, p := range data.People {
 		if p.Craft == "ISS" {
-			members = append(members, model.CrewMember{Name: p.Name, Craft: p.Craft})
+			members = append(members, station.CrewMember{Name: p.Name, Craft: p.Craft})
 		}
 	}
 

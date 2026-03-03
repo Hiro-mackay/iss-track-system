@@ -1,9 +1,36 @@
-package orbit
+package tracking
 
 import "testing"
 
+func TestNewTLE_Valid(t *testing.T) {
+	tle, err := NewTLE(testTLEName, testTLELine1, testTLELine2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !tle.IsValid() {
+		t.Error("TLE should be valid")
+	}
+	if tle.Name() != testTLEName {
+		t.Errorf("Name() = %q, want %q", tle.Name(), testTLEName)
+	}
+}
+
+func TestNewTLE_Invalid(t *testing.T) {
+	_, err := NewTLE("bad", "bad", "bad")
+	if err == nil {
+		t.Error("should return error for invalid TLE")
+	}
+}
+
+func TestTLEZeroValue(t *testing.T) {
+	var tle TLE
+	if tle.IsValid() {
+		t.Error("zero-value TLE should not be valid")
+	}
+}
+
 func TestPositionLatRange(t *testing.T) {
-	pos, err := PropagatePosition(testTLEName, testTLELine1, testTLELine2)
+	pos, err := testTLE().PropagatePosition()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -13,7 +40,7 @@ func TestPositionLatRange(t *testing.T) {
 }
 
 func TestPositionLonRange(t *testing.T) {
-	pos, err := PropagatePosition(testTLEName, testTLELine1, testTLELine2)
+	pos, err := testTLE().PropagatePosition()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -23,7 +50,7 @@ func TestPositionLonRange(t *testing.T) {
 }
 
 func TestPositionAltitudeRange(t *testing.T) {
-	pos, err := PropagatePosition(testTLEName, testTLELine1, testTLELine2)
+	pos, err := testTLE().PropagatePosition()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -33,7 +60,7 @@ func TestPositionAltitudeRange(t *testing.T) {
 }
 
 func TestPositionVelocityRange(t *testing.T) {
-	pos, err := PropagatePosition(testTLEName, testTLELine1, testTLELine2)
+	pos, err := testTLE().PropagatePosition()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -43,7 +70,7 @@ func TestPositionVelocityRange(t *testing.T) {
 }
 
 func TestPositionTimestamp(t *testing.T) {
-	pos, err := PropagatePosition(testTLEName, testTLELine1, testTLELine2)
+	pos, err := testTLE().PropagatePosition()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

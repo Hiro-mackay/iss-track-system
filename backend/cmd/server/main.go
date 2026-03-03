@@ -13,7 +13,9 @@ import (
 	"github.com/Hiro-mackay/iss-track-system/backend/internal/presentation/handler"
 	"github.com/Hiro-mackay/iss-track-system/backend/internal/presentation/middleware"
 	"github.com/Hiro-mackay/iss-track-system/backend/internal/repository"
-	"github.com/Hiro-mackay/iss-track-system/backend/internal/service/query"
+	passsvc "github.com/Hiro-mackay/iss-track-system/backend/internal/service/pass"
+	stationsvc "github.com/Hiro-mackay/iss-track-system/backend/internal/service/station"
+	trackingsvc "github.com/Hiro-mackay/iss-track-system/backend/internal/service/tracking"
 )
 
 func main() {
@@ -51,10 +53,9 @@ func main() {
 	}()
 
 	// Query services
-	positionSvc := query.NewPositionQueryService(tleRepo)
-	passSvc := query.NewPassQueryService(tleRepo)
-	crewSvc := query.NewCrewQueryService(crewRepo)
-	stationSvc := query.NewStationQueryService(tleRepo, crewRepo)
+	positionSvc := trackingsvc.NewQueryService(tleRepo)
+	passSvc := passsvc.NewQueryService(tleRepo)
+	stationSvc := stationsvc.NewQueryService(tleRepo, crewRepo)
 
 	// Routes
 	mux := http.NewServeMux()
@@ -71,7 +72,7 @@ func main() {
 	mux.HandleFunc("GET /api/v1/position", handler.Position(positionSvc))
 	mux.HandleFunc("GET /api/v1/orbit", handler.Orbit(positionSvc))
 	mux.HandleFunc("GET /api/v1/passes", handler.Passes(passSvc))
-	mux.HandleFunc("GET /api/v1/iss/crew", handler.Crew(crewSvc))
+	mux.HandleFunc("GET /api/v1/iss/crew", handler.Crew(stationSvc))
 	mux.HandleFunc("GET /api/v1/iss/status", handler.Status(stationSvc))
 	mux.Handle("GET /ws/position", handler.WebSocket(positionSvc, cfg.WSInterval, cfg.CORSOrigins))
 

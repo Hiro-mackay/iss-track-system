@@ -1,4 +1,4 @@
-package orbit
+package pass
 
 import (
 	"testing"
@@ -70,7 +70,7 @@ func TestSunAltitudeNoonHigher(t *testing.T) {
 }
 
 func TestPassPredictions(t *testing.T) {
-	preds, err := PredictPasses(testTLEName, testTLELine1, testTLELine2, 35.6762, 139.6503, 3)
+	preds, err := PredictPasses(testTLE(), 35.6762, 139.6503, 3)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -105,7 +105,6 @@ func TestPassPredictions(t *testing.T) {
 
 		switch p.Brightness {
 		case "bright", "moderate", "dim":
-			// valid
 		default:
 			t.Errorf("pass[%d]: unexpected brightness %q", i, p.Brightness)
 		}

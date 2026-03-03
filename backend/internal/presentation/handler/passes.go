@@ -8,11 +8,12 @@ import (
 	"strconv"
 
 	"github.com/Hiro-mackay/iss-track-system/backend/internal/presentation"
-	"github.com/Hiro-mackay/iss-track-system/backend/internal/service/query"
+	"github.com/Hiro-mackay/iss-track-system/backend/internal/service"
+	passsvc "github.com/Hiro-mackay/iss-track-system/backend/internal/service/pass"
 )
 
 // Passes returns an http.HandlerFunc that serves ISS pass predictions as JSON.
-func Passes(svc *query.PassQueryService) http.HandlerFunc {
+func Passes(svc *passsvc.QueryService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		latStr := r.URL.Query().Get("lat")
 		lonStr := r.URL.Query().Get("lon")
@@ -47,7 +48,7 @@ func Passes(svc *query.PassQueryService) http.HandlerFunc {
 
 		passes, err := svc.Predict(lat, lon, days)
 		if err != nil {
-			var tleErr *query.TLEError
+			var tleErr *service.TLEError
 			if errors.As(err, &tleErr) {
 				slog.Error("failed to get TLE", "error", err)
 				presentation.WriteError(w, "TLE_UNAVAILABLE", "TLE unavailable", http.StatusServiceUnavailable)

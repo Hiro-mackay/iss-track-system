@@ -1,9 +1,13 @@
-package orbit
+package station
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/Hiro-mackay/iss-track-system/backend/internal/domain/tracking"
+)
 
 func TestComputeStatus_Period(t *testing.T) {
-	status, err := ComputeStatus(testTLEName, testTLELine1, testTLELine2, 6)
+	status, err := ComputeStatus(testTLE(), 6)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -15,7 +19,7 @@ func TestComputeStatus_Period(t *testing.T) {
 }
 
 func TestComputeStatus_Apogee(t *testing.T) {
-	status, err := ComputeStatus(testTLEName, testTLELine1, testTLELine2, 6)
+	status, err := ComputeStatus(testTLE(), 6)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -27,7 +31,7 @@ func TestComputeStatus_Apogee(t *testing.T) {
 }
 
 func TestComputeStatus_Perigee(t *testing.T) {
-	status, err := ComputeStatus(testTLEName, testTLELine1, testTLELine2, 6)
+	status, err := ComputeStatus(testTLE(), 6)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -39,7 +43,7 @@ func TestComputeStatus_Perigee(t *testing.T) {
 }
 
 func TestComputeStatus_Inclination(t *testing.T) {
-	status, err := ComputeStatus(testTLEName, testTLELine1, testTLELine2, 6)
+	status, err := ComputeStatus(testTLE(), 6)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -51,19 +55,18 @@ func TestComputeStatus_Inclination(t *testing.T) {
 }
 
 func TestComputeStatus_OrbitCount(t *testing.T) {
-	status, err := ComputeStatus(testTLEName, testTLELine1, testTLELine2, 6)
+	status, err := ComputeStatus(testTLE(), 6)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// RevolutionNumber in TLE is 40000, orbit count should be greater
 	if status.OrbitCount <= 40000 {
 		t.Errorf("should have orbit count > 40000: got %d", status.OrbitCount)
 	}
 }
 
 func TestComputeStatus_CrewCount(t *testing.T) {
-	status, err := ComputeStatus(testTLEName, testTLELine1, testTLELine2, 7)
+	status, err := ComputeStatus(testTLE(), 7)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -74,7 +77,7 @@ func TestComputeStatus_CrewCount(t *testing.T) {
 }
 
 func TestComputeStatus_LaunchYear(t *testing.T) {
-	status, err := ComputeStatus(testTLEName, testTLELine1, testTLELine2, 0)
+	status, err := ComputeStatus(testTLE(), 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -84,9 +87,10 @@ func TestComputeStatus_LaunchYear(t *testing.T) {
 	}
 }
 
-func TestComputeStatus_InvalidTLE(t *testing.T) {
-	_, err := ComputeStatus("bad", "bad", "bad", 0)
+func TestComputeStatus_ZeroTLE(t *testing.T) {
+	var tle tracking.TLE
+	_, err := ComputeStatus(tle, 0)
 	if err == nil {
-		t.Error("should return error for invalid TLE")
+		t.Error("should return error for zero-value TLE")
 	}
 }

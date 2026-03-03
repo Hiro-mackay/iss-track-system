@@ -1,4 +1,4 @@
-package model
+package pass
 
 // Brightness levels for pass predictions.
 const (

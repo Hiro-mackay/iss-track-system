@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/Hiro-mackay/iss-track-system/backend/internal/config"
-	"github.com/Hiro-mackay/iss-track-system/backend/internal/domain/model"
+	"github.com/Hiro-mackay/iss-track-system/backend/internal/domain/tracking"
 )
 
-var _ model.TLEProvider = (*TLERepository)(nil)
+var _ tracking.TLEProvider = (*TLERepository)(nil)
 
 // tleMaxResponseBytes limits the size of TLE responses to 64 KiB.
 const tleMaxResponseBytes = 1 << 16
@@ -22,9 +22,7 @@ const tleMaxResponseBytes = 1 << 16
 type TLERepository struct {
 	mu        sync.RWMutex
 	refreshMu sync.Mutex
-	name      string
-	line1     string
-	line2     string
+	tle       tracking.TLE
 	fetchedAt time.Time
 	cfg       config.Config
 	client    *http.Client
@@ -38,13 +36,13 @@ func NewTLERepository(cfg config.Config) *TLERepository {
 	}
 }
 
-// Get returns cached TLE lines, refreshing if the cache has expired.
-func (r *TLERepository) Get() (string, string, string, error) {
+// Get returns cached TLE data, refreshing if the cache has expired.
+func (r *TLERepository) Get() (tracking.TLE, error) {
 	r.mu.RLock()
-	if r.name != "" && time.Since(r.fetchedAt) < r.cfg.TLECacheTTL {
-		name, l1, l2 := r.name, r.line1, r.line2
+	if r.tle.IsValid() && time.Since(r.fetchedAt) < r.cfg.TLECacheTTL {
+		tle := r.tle
 		r.mu.RUnlock()
-		return name, l1, l2, nil
+		return tle, nil
 	}
 	r.mu.RUnlock()
 
@@ -53,28 +51,28 @@ func (r *TLERepository) Get() (string, string, string, error) {
 
 	// Double-check: another goroutine may have refreshed while we waited.
 	r.mu.RLock()
-	if r.name != "" && time.Since(r.fetchedAt) < r.cfg.TLECacheTTL {
-		name, l1, l2 := r.name, r.line1, r.line2
+	if r.tle.IsValid() && time.Since(r.fetchedAt) < r.cfg.TLECacheTTL {
+		tle := r.tle
 		r.mu.RUnlock()
-		return name, l1, l2, nil
+		return tle, nil
 	}
 	r.mu.RUnlock()
 
 	if err := r.Refresh(); err != nil {
 		r.mu.RLock()
-		if r.name != "" {
-			name, l1, l2 := r.name, r.line1, r.line2
+		if r.tle.IsValid() {
+			tle := r.tle
 			r.mu.RUnlock()
 			slog.Warn("TLE refresh failed, returning stale cache", "error", err)
-			return name, l1, l2, nil
+			return tle, nil
 		}
 		r.mu.RUnlock()
-		return "", "", "", err
+		return tracking.TLE{}, err
 	}
 
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.name, r.line1, r.line2, nil
+	return r.tle, nil
 }
 
 // Refresh fetches fresh TLE data from the configured URL and updates the cache.
@@ -104,14 +102,17 @@ func (r *TLERepository) Refresh() error {
 		return fmt.Errorf("invalid TLE data: expected 3 lines, got %d", len(lines))
 	}
 
+	tle, err := tracking.NewTLE(lines[0], lines[1], lines[2])
+	if err != nil {
+		return fmt.Errorf("parsing TLE data: %w", err)
+	}
+
 	r.mu.Lock()
-	r.name = lines[0]
-	r.line1 = lines[1]
-	r.line2 = lines[2]
+	r.tle = tle
 	r.fetchedAt = time.Now()
 	r.mu.Unlock()
 
-	slog.Info("TLE cache refreshed", "name", lines[0])
+	slog.Info("TLE cache refreshed", "name", tle.Name())
 	return nil
 }
 
@@ -119,5 +120,5 @@ func (r *TLERepository) Refresh() error {
 func (r *TLERepository) HasData() bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.name != ""
+	return r.tle.IsValid()
 }

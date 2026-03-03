@@ -1,4 +1,4 @@
-package model
+package tracking
 
 // ISSPosition represents the current position and velocity of the ISS.
 type ISSPosition struct {
